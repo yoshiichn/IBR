@@ -11,3 +11,5 @@ Cargo.lock
 
 # seed-rs
 /pkg
+
+.vscode/
