@@ -8,13 +8,18 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 struct Repository {
     name: String,
-    reviewers: Vec<Reviewer>, // TODO: レスポンスにない値なのでDeserialize失敗してるかも。要確認
 }
 
 #[derive(Debug, Deserialize)]
 struct Reviewer {
     name: String,
-    assigned_pull_requests: Vec<String>,
+    assigned_pull_requests: Vec<PullRequest>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PullRequest {
+    id: String,
+    repo_name: String,
 }
 
 #[derive(Debug)]
