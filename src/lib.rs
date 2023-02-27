@@ -62,8 +62,8 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 async fn fetch_organization_data() -> Result<Organization> {
-    let organization_name = "my-organization";
-    let access_token = "my-access-token";
+    let organization_name = "fierte-product-development";
+    let access_token = "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";
     let mut headers = HeaderMap::new();
     headers.insert(
         header::AUTHORIZATION,
@@ -82,12 +82,12 @@ async fn fetch_organization_data() -> Result<Organization> {
         .text()
         .await
         .with_context(|| "Failed to parse repositories response")?;
-    let mut repositories: Vec<Repository> =
+    let mut repositories: Vec<String> =
         serde_json::from_str(&repositories_response).unwrap_or_else(|_| Vec::new());
     for repository in &mut repositories {
         let pulls_url = format!(
             "https://api.github.com/repos/{}/{}/pulls?state=open",
-            organization_name, repository.name
+            organization_name, repository
         );
         let pulls_response = &client
             .get(&pulls_url)
@@ -131,29 +131,27 @@ async fn fetch_organization_data() -> Result<Organization> {
             for review in reviews {
                 let reviewer_login = review["user"]["login"].as_str().unwrap().to_string();
                 let state = review["state"].as_str().unwrap().to_string();
-                if state != "COMMENTED" && state != "DISMISSED" {
-                    if let Some(reviewer) = repository
-                        .reviewers
-                        .iter_mut()
-                        .find(|r| r.name == reviewer_login)
-                    {
-                        reviewer
-                            .assigned_pull_requests
-                            .push(pull["url"].as_str().unwrap().to_string());
-                    } else {
-                        repository.reviewers.push(Reviewer {
-                            name: reviewer_login.clone(),
-                            assigned_pull_requests: vec![pull["url"].as_str().unwrap().to_string()],
-                        });
-                    }
-                }
+
+                // if state != "COMMENTED" && state != "DISMISSED" {
+                //     if let Some(reviewer) = repository.find(|r| r.name == reviewer_login) {
+                //         reviewer
+                //             .assigned_pull_requests
+                //             .push(pull["url"].as_str().unwrap().to_string());
+                //     } else {
+                //         repository.reviewers.push(Reviewer {
+                //             name: reviewer_login.clone(),
+                //             assigned_pull_requests: vec![pull["url"].as_str().unwrap().to_string()],
+                //         });
+                //     }
+                // }
             }
         }
     }
+    let reviewers = vec![];
 
     Ok(Organization {
         name: organization_name.to_string(),
-        repositories,
+        reviewers,
     })
 }
 
@@ -161,46 +159,46 @@ fn view(model: &Model) -> Node<Msg> {
     div![
         h1!("GitHub Organization Reviewers"),
         button!["Fetch data", ev(Ev::Click, |_| Msg::FetchData),],
-        match &model.organization {
-            Some(organization) => {
-                div![
-                    p![format!("Organization: {}", organization.name)],
-                    div![
-                        C!["repositories"],
-                        organization.repositories.iter().map(|repository| {
-                            div![
-                                h2![&repository.name],
-                                div![
-                                    C!["reviewers"],
-                                    repository.reviewers.iter().map(|reviewer| {
-                                        div![
-                                            C!["reviewer"],
-                                            p![&reviewer.name],
-                                            div![
-                                                C!["pull-requests"],
-                                                reviewer.assigned_pull_requests.iter().map(|url| {
-                                                    a![
-                                                        attrs! {
-                                                        At::Href => url,
-                                                        },
-                                                        &url
-                                                    ]
-                                                }),
-                                            ],
-                                        ]
-                                    }),
-                                ],
-                            ]
-                        }),
-                    ],
-                ]
-            }
-            None => {
-                match &model.error_message {
-                    Some(error_message) => p![error_message],
-                    None => p!["Click the button to fetch data."],
-                }
-            }
-        }
+        // match &model.organization {
+        //     Some(organization) => {
+        //         div![
+        //             p![format!("Organization: {}", organization.name)],
+        //             div![
+        //                 C!["reviewers"],
+        //                 organization.name.chars().map(|repository| {
+        //                     div![
+        //                         h2![&repository.name],
+        //                         div![
+        //                             C!["reviewers"],
+        //                             repository.reviewers.iter().map(|reviewer| {
+        //                                 div![
+        //                                     C!["reviewer"],
+        //                                     p![&reviewer.name],
+        //                                     div![
+        //                                         C!["pull-requests"],
+        //                                         reviewer.assigned_pull_requests.iter().map(|url| {
+        //                                             a![
+        //                                                 attrs! {
+        //                                                 At::Href => url,
+        //                                                 },
+        //                                                 &url
+        //                                             ]
+        //                                         }),
+        //                                     ],
+        //                                 ]
+        //                             }),
+        //                         ],
+        //                     ]
+        //                 }),
+        //             ],
+        //         ]
+        //     }
+        //     None => {
+        //         match &model.error_message {
+        //             Some(error_message) => p![error_message],
+        //             None => p!["Click the button to fetch data."],
+        //         }
+        //     }
+        // }
     ]
 }
