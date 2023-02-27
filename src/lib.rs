@@ -4,10 +4,10 @@ use reqwest::header::{self, HeaderMap};
 use seed::{prelude::*, *};
 use serde::Deserialize;
 
-// TODO: 諸々、利用する各Github APIのレスポンスを確認してデータ構造の改善をする
-#[derive(Debug, Deserialize)]
-struct Repository {
+#[derive(Debug)]
+struct Organization {
     name: String,
+    reviewers: Vec<Reviewer>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -20,12 +20,6 @@ struct Reviewer {
 struct PullRequest {
     id: String,
     repo_name: String,
-}
-
-#[derive(Debug)]
-struct Organization {
-    name: String,
-    repositories: Vec<Repository>,
 }
 
 struct Model {
