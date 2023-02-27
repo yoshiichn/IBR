@@ -8,6 +8,12 @@ use serde::Deserialize;
 struct Organization {
     name: String,
     reviewers: Vec<Reviewer>,
+    repositories: Vec<Repository>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Repository {
+    name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,8 +68,8 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 async fn fetch_organization_data() -> Result<Organization> {
-    let organization_name = "fierte-product-development";
-    let access_token = "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";
+    let organization_name = "your-organization";
+    let access_token = "your-access-token";
     let mut headers = HeaderMap::new();
     headers.insert(
         header::AUTHORIZATION,
@@ -82,12 +88,12 @@ async fn fetch_organization_data() -> Result<Organization> {
         .text()
         .await
         .with_context(|| "Failed to parse repositories response")?;
-    let mut repositories: Vec<String> =
+    let mut repos: Vec<Repository> =
         serde_json::from_str(&repositories_response).unwrap_or_else(|_| Vec::new());
-    for repository in &mut repositories {
+    for repository in &mut repos {
         let pulls_url = format!(
             "https://api.github.com/repos/{}/{}/pulls?state=open",
-            organization_name, repository
+            organization_name, repository.name
         );
         let pulls_response = &client
             .get(&pulls_url)
@@ -101,16 +107,6 @@ async fn fetch_organization_data() -> Result<Organization> {
         let pulls: Vec<serde_json::Value> = serde_json::from_str(&pulls_response)
             .with_context(|| "Failed to parse pull requests")?;
         for pull in pulls {
-            // TODO: Assignee不要なら消す
-            // let empty_vec = Vec::new();
-            // let assignees = match pull["assignees"].as_array() {
-            //     Some(assignees) => assignees,
-            //     None => &empty_vec,
-            // };
-            // let assignee_logins: Vec<String> = assignees
-            //     .iter()
-            //     .map(|a| a["login"].as_str().unwrap().to_string())
-            //     .collect();
             let reviews_url = pull["url"]
                 .as_str()
                 .unwrap()
@@ -147,11 +143,13 @@ async fn fetch_organization_data() -> Result<Organization> {
             }
         }
     }
-    let reviewers = vec![];
 
+    let reviewers = vec![];
+    let repositories = vec![];
     Ok(Organization {
         name: organization_name.to_string(),
         reviewers,
+        repositories,
     })
 }
 
