@@ -246,11 +246,19 @@ fn view(model: &Model) -> Node<Msg> {
                         tbody![organization.reviewers.iter().map(|reviewer| {
                             tr![
                                 td![
+                                    img![
+                                        attrs! {
+                                            At::Src => format!("https://github.com/{}.png", reviewer.name.chars().filter(|&c| c != '\"').collect::<String>()),
+                                            At::Alt => &reviewer.name,
+                                            At::Width => "40",
+                                            At::Height => "40",
+                                        }
+                                    ],
                                     style![
                                         St::Padding => "10px",
-                                        St::VerticalAlign => "top",
+                                        St::VerticalAlign => "baseline",
                                     ],
-                                    &reviewer.name
+                                    a![ reviewer.name.chars().filter(|&c| c != '\"').collect::<String>()]
                                 ],
                                 organization.repositories.iter().map(|repo| {
                                     let prs: Vec<PullRequest> = reviewer
@@ -268,14 +276,22 @@ fn view(model: &Model) -> Node<Msg> {
                                         prs.iter().map(|pr| {
                                             a![
                                                 style![
-                                                    St::BackgroundColor => "#3498db",
+                                                    St::BoxShadow => "0px 0px 5px 2px rgba(0,0,0,0.5)",
+                                                    St::BackgroundColor => "white",
                                                     St::Color => "#ffffff",
                                                     St::TextDecoration => "none",
                                                     St::Padding => "5px 10px",
                                                     St::BorderRadius => "5px",
                                                     St::Cursor => "pointer",
                                                 ],
-                                                &pr.id
+                                                a![
+                                                    attrs! {
+                                                        At::Href => &pr.url,
+                                                        At::Target => "_blank",
+                                                        At::Rel => "noopener noreferrer",
+                                                    },
+                                                    &pr.id
+                                                ]
                                             ]
                                         })
                                     ]
