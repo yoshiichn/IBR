@@ -94,8 +94,9 @@ async fn fetch_organization_data() -> Result<Organization> {
         .text()
         .await
         .with_context(|| "Failed to parse repositories response")?;
-    org.repositories = serde_json::from_str(&repositories_response).unwrap_or_else(|_| Vec::new());
-    for repository in &mut org.repositories {
+    let mut repositories: Vec<Repository> =
+        serde_json::from_str(&repositories_response).unwrap_or_else(|_| Vec::new());
+    for repository in &mut repositories {
         let pulls_url = format!(
             "https://api.github.com/repos/{}/{}/pulls?state=open",
             organization_name, repository.name
@@ -113,36 +114,52 @@ async fn fetch_organization_data() -> Result<Organization> {
             .with_context(|| "Failed to parse pull requests")?;
 
         for pull in pulls {
-            // pullにデータがあるものだけ動かす
-            org.reviewers.push(Reviewer {
-                name: pull["requested_reviewers"][0]["login"].to_string(),
-                assigned_pull_requests: vec![],
-            });
-            org.reviewers[0].assigned_pull_requests.push(PullRequest {
-                id: pull["number"].to_string(),
-                url: pull["url"]
-                    .as_str()
-                    .unwrap()
-                    .replace("api.", "")
-                    .replace("repos/", "")
-                    .replace("pulls", "pull"),
-                repo_name: repository.name.to_string(),
-            });
-            // let reviews_response = &client
-            //     .get(&reviews_url)
-            //     .headers(headers.clone())
-            //     .send()
-            //     .await
-            //     .with_context(|| format!("Failed to fetch reviews from {}", reviews_url))?
-            //     .text()
-            //     .await
-            //     .with_context(|| "Failed to parse reviews response")?;
-            // let reviews: Vec<serde_json::Value> = serde_json::from_str(&reviews_response)
-            //     .with_context(|| "Failed to parse reviews")?;
-            // for review in reviews {
-            //     let reviewer_login = review["user"]["login"].as_str().unwrap().to_string();
-            //     let state = review["state"].as_str().unwrap().to_string();
-            // }
+            if !org
+                .repositories
+                .iter()
+                .any(|repo| repo.name == repository.name)
+            {
+                org.repositories.push(Repository {
+                    name: repository.name.to_string(),
+                });
+            };
+
+            let reviewers = serde_json::Value::as_array(&pull["requested_reviewers"]).unwrap();
+            for reviewer in reviewers {
+                let reviewer_name = reviewer["login"].clone();
+
+                if !org
+                    .reviewers
+                    .iter()
+                    .any(|r| r.name.to_string() == reviewer["login"].to_string())
+                {
+                    org.reviewers.push(Reviewer {
+                        name: reviewer_name.to_string(),
+                        assigned_pull_requests: vec![],
+                    });
+                };
+                let _index = org
+                    .reviewers
+                    .iter()
+                    .position(|r| r.name == reviewer_name.to_string());
+
+                if !_index.is_none() {
+                    let index = _index.unwrap();
+
+                    org.reviewers[index]
+                        .assigned_pull_requests
+                        .push(PullRequest {
+                            id: pull["number"].to_string(),
+                            url: pull["url"]
+                                .as_str()
+                                .unwrap()
+                                .replace("api.", "")
+                                .replace("repos/", "")
+                                .replace("pulls", "pull"),
+                            repo_name: repository.name.to_string(),
+                        });
+                }
+            }
         }
     }
 
