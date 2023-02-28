@@ -32,17 +32,21 @@ struct PullRequest {
 struct Model {
     organization: Option<Organization>,
     error_message: Option<String>,
+    loading: bool,
 }
 
 enum Msg {
     FetchData,
     DataFetched(Result<Organization>),
+    LoadingStarted,
+    LoadingFinished,
 }
 
 fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
     Model {
         organization: None,
         error_message: None,
+        loading: false,
     }
 }
 
@@ -56,15 +60,22 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::FetchData => {
             model.organization = None;
             model.error_message = None;
-            // TODO: perform_cmdはasync fnを引数に取れるのでコメントしたような渡し方は不要のはず。確認して削除する
-            // let future = async { fetch_organization_data().map(Msg::DataFetched).await };
-            let future = fetch_organization_data().map(Msg::DataFetched);
-            orders.perform_cmd(future);
+            orders.send_msg(Msg::LoadingStarted);
+            orders.perform_cmd(fetch_organization_data().map(Msg::DataFetched));
         }
-        Msg::DataFetched(result) => match result {
-            Ok(organization) => model.organization = Some(organization),
-            Err(err) => model.error_message = Some(err.to_string()),
-        },
+        Msg::DataFetched(result) => {
+            orders.send_msg(Msg::LoadingFinished);
+            match result {
+                Ok(organization) => model.organization = Some(organization),
+                Err(err) => model.error_message = Some(err.to_string()),
+            }
+        }
+        Msg::LoadingStarted => {
+            model.loading = true;
+        }
+        Msg::LoadingFinished => {
+            model.loading = false;
+        }
     }
 }
 
@@ -187,6 +198,11 @@ fn view(model: &Model) -> Node<Msg> {
                 St::Cursor => "pointer",
             ],
         ],
+        div![if model.loading {
+            loading_spinner()
+        } else {
+            empty![]
+        }],
         match &model.organization {
             Some(organization) => {
                 div![
@@ -277,13 +293,25 @@ fn view(model: &Model) -> Node<Msg> {
                     ],
                     error_message
                 ],
-                None => p![
-                    style![
-                        St::FontWeight => "bold",
-                    ],
-                    "Click the button to fetch data."
-                ],
+                None => empty![],
             },
         }
     ]
+}
+
+fn loading_spinner() -> Node<Msg> {
+    div![style![
+        St::Display => "inline-block",
+        St::Width => "1.5rem",
+        St::Height => "1.5rem",
+        St::BorderRadius => "50%",
+        St::BorderStyle => "solid",
+        St::BorderWidth => "0.2rem",
+        St::BorderColor => "#eee #eee #eee #007bff",
+        St::Position => "absolute",
+        St::Top => "50%",
+        St::Left => "50%",
+        St::Transform => "translate(-50%, -50%)",
+        St::Animation => "spin 1s linear infinite"
+    ],]
 }
