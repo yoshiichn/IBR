@@ -1,5 +1,5 @@
 # IBR
-I`m Busy Reveiwing.
+I`m Busy Reviewing.
 
 あ～レビュー忙しいわ～～～～～～～～～～を解決するためのアプリケーション。
 
