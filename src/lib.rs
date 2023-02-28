@@ -22,9 +22,10 @@ struct Reviewer {
     assigned_pull_requests: Vec<PullRequest>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct PullRequest {
     id: String,
+    url: String,
     repo_name: String,
 }
 
@@ -70,6 +71,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 async fn fetch_organization_data() -> Result<Organization> {
     let organization_name = "your-organization";
     let access_token = "your-access-token";
+    let mut org = Organization {
+        name: organization_name.to_string(),
+        reviewers: vec![],
+        repositories: vec![],
+    };
     let mut headers = HeaderMap::new();
     headers.insert(
         header::AUTHORIZATION,
@@ -88,9 +94,8 @@ async fn fetch_organization_data() -> Result<Organization> {
         .text()
         .await
         .with_context(|| "Failed to parse repositories response")?;
-    let mut repos: Vec<Repository> =
-        serde_json::from_str(&repositories_response).unwrap_or_else(|_| Vec::new());
-    for repository in &mut repos {
+    org.repositories = serde_json::from_str(&repositories_response).unwrap_or_else(|_| Vec::new());
+    for repository in &mut org.repositories {
         let pulls_url = format!(
             "https://api.github.com/repos/{}/{}/pulls?state=open",
             organization_name, repository.name
@@ -106,65 +111,54 @@ async fn fetch_organization_data() -> Result<Organization> {
             .with_context(|| "Failed to parse pull requests response")?;
         let pulls: Vec<serde_json::Value> = serde_json::from_str(&pulls_response)
             .with_context(|| "Failed to parse pull requests")?;
-        for pull in pulls {
-            let reviews_url = pull["url"]
-                .as_str()
-                .unwrap()
-                .replace("api.", "")
-                .replace("/pulls/", "/pulls/")
-                + "/reviews";
-            let reviews_response = &client
-                .get(&reviews_url)
-                .headers(headers.clone())
-                .send()
-                .await
-                .with_context(|| format!("Failed to fetch reviews from {}", reviews_url))?
-                .text()
-                .await
-                .with_context(|| "Failed to parse reviews response")?;
-            let reviews: Vec<serde_json::Value> = serde_json::from_str(&reviews_response)
-                .with_context(|| "Failed to parse reviews")?;
-            for review in reviews {
-                let reviewer_login = review["user"]["login"].as_str().unwrap().to_string();
-                let state = review["state"].as_str().unwrap().to_string();
 
-                // if state != "COMMENTED" && state != "DISMISSED" {
-                //     if let Some(reviewer) = repository.find(|r| r.name == reviewer_login) {
-                //         reviewer
-                //             .assigned_pull_requests
-                //             .push(pull["url"].as_str().unwrap().to_string());
-                //     } else {
-                //         repository.reviewers.push(Reviewer {
-                //             name: reviewer_login.clone(),
-                //             assigned_pull_requests: vec![pull["url"].as_str().unwrap().to_string()],
-                //         });
-                //     }
-                // }
-            }
+        for pull in pulls {
+            // pullにデータがあるものだけ動かす
+            org.reviewers.push(Reviewer {
+                name: pull["requested_reviewers"][0]["login"].to_string(),
+                assigned_pull_requests: vec![],
+            });
+            org.reviewers[0].assigned_pull_requests.push(PullRequest {
+                id: pull["number"].to_string(),
+                url: pull["url"]
+                    .as_str()
+                    .unwrap()
+                    .replace("api.", "")
+                    .replace("repos/", "")
+                    .replace("pulls", "pull"),
+                repo_name: repository.name.to_string(),
+            });
+            // let reviews_response = &client
+            //     .get(&reviews_url)
+            //     .headers(headers.clone())
+            //     .send()
+            //     .await
+            //     .with_context(|| format!("Failed to fetch reviews from {}", reviews_url))?
+            //     .text()
+            //     .await
+            //     .with_context(|| "Failed to parse reviews response")?;
+            // let reviews: Vec<serde_json::Value> = serde_json::from_str(&reviews_response)
+            //     .with_context(|| "Failed to parse reviews")?;
+            // for review in reviews {
+            //     let reviewer_login = review["user"]["login"].as_str().unwrap().to_string();
+            //     let state = review["state"].as_str().unwrap().to_string();
+            // }
         }
     }
 
-    let reviewers = vec![];
-    let repositories = vec![];
-    Ok(Organization {
-        name: organization_name.to_string(),
-        reviewers,
-        repositories,
-    })
+    Ok(org)
 }
 
 fn view(model: &Model) -> Node<Msg> {
     div![
-        h1![
-            a![
-                attrs! {
-                    At::Href => "https://github.com/yoshiichn/IBR",
-                    At::Target => "_blank",
-                    At::Rel => "noopener noreferrer",
-                },
-                format!("{} I'm Busy Reviewing. {}", '\u{1F347}', '\u{1F980}')
-            ]
-        ],
+        h1![a![
+            attrs! {
+                At::Href => "https://github.com/yoshiichn/IBR",
+                At::Target => "_blank",
+                At::Rel => "noopener noreferrer",
+            },
+            format!("{} I'm Busy Reviewing. {}", '\u{1F347}', '\u{1F980}')
+        ]],
         button![
             "Fetch data",
             ev(Ev::Click, |_| Msg::FetchData),
@@ -216,42 +210,45 @@ fn view(model: &Model) -> Node<Msg> {
                                 })
                             ]
                         ],
-                        tbody![
-                            organization.reviewers.iter().map(|reviewer| {
-                                tr![
+                        tbody![organization.reviewers.iter().map(|reviewer| {
+                            tr![
+                                td![
+                                    style![
+                                        St::Padding => "10px",
+                                        St::VerticalAlign => "top",
+                                    ],
+                                    &reviewer.name
+                                ],
+                                organization.repositories.iter().map(|repo| {
+                                    let prs: Vec<PullRequest> = reviewer
+                                        .assigned_pull_requests
+                                        .iter()
+                                        .filter(|pr| pr.repo_name == *repo.name)
+                                        .cloned()
+                                        .collect();
                                     td![
                                         style![
                                             St::Padding => "10px",
                                             St::VerticalAlign => "top",
+                                            St::TextAlign => "center",
                                         ],
-                                        &reviewer.name
-                                    ],
-                                    organization.repositories.iter().map(|repo| {
-                                        let prs: Vec<PullRequest> = reviewer.assigned_pull_requests.iter().filter(|pr| pr.repo_name == *repo.name).cloned().collect();
-                                        td![
-                                            style![
-                                                St::Padding => "10px",
-                                                St::VerticalAlign => "top",
-                                                St::TextAlign => "center",
-                                            ],
-                                            prs.iter().map(|pr| {
-                                                a![
-                                                    style![
-                                                        St::BackgroundColor => "#3498db",
-                                                        St::Color => "#ffffff",
-                                                        St::TextDecoration => "none",
-                                                        St::Padding => "5px 10px",
-                                                        St::BorderRadius => "5px",
-                                                        St::Cursor => "pointer",
-                                                    ],
-                                                    &pr.id
-                                                ]
-                                            })
-                                        ]
-                                    })
-                                ]
-                            })
-                        ]
+                                        prs.iter().map(|pr| {
+                                            a![
+                                                style![
+                                                    St::BackgroundColor => "#3498db",
+                                                    St::Color => "#ffffff",
+                                                    St::TextDecoration => "none",
+                                                    St::Padding => "5px 10px",
+                                                    St::BorderRadius => "5px",
+                                                    St::Cursor => "pointer",
+                                                ],
+                                                &pr.id
+                                            ]
+                                        })
+                                    ]
+                                })
+                            ]
+                        })]
                     ]
                 ]
             }
