@@ -18,3 +18,9 @@ cargo make build
 cargo make serve
 # let's check it out in your web browser.
 ```
+
+## Deploy
+```
+# "Web server construction requires a lot of man-hours."
+nohup cargo-make make serve > /dev/null 2>&1 &
+```
