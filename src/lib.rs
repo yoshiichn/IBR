@@ -1,8 +1,15 @@
 #![allow(clippy::wildcard_imports)]
 use anyhow::{Context, Result};
 use reqwest::header::{self, HeaderMap};
+use cookie::{Cookie, CookieJar};
 use seed::{prelude::*, *};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
+#[derive(Default, Serialize, Deserialize)]
+struct Form {
+    organazation: String,
+    token: String,
+}
 
 #[derive(Debug)]
 struct Organization {
@@ -30,12 +37,17 @@ struct PullRequest {
 }
 
 struct Model {
+    form: Form,
     organization: Option<Organization>,
     error_message: Option<String>,
     loading: bool,
 }
 
 enum Msg {
+    InputOrganazation(String),
+    InputToken(String),
+    SubmitClicked,
+    LoadFromCookie,
     FetchData,
     DataFetched(Result<Organization>),
     LoadingStarted,
@@ -44,6 +56,7 @@ enum Msg {
 
 fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
     Model {
+        form: Form{organazation: "".to_string(), token: "".to_string()},
         organization: None,
         error_message: None,
         loading: false,
@@ -55,8 +68,28 @@ pub async fn start() {
     App::start("app", init, update, view);
 }
 
+pub fn html_document() -> web_sys::HtmlDocument {
+    wasm_bindgen::JsValue::from(document()).unchecked_into::<web_sys::HtmlDocument>()
+}
+
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
+        Msg::InputOrganazation(organazation) => {model.form.organazation = organazation}
+        Msg::InputToken(token) => {model.form.token = token}
+        Msg::SubmitClicked => {
+            Msg::FetchData;
+            let mut jar = CookieJar::new();
+            let cookie = Cookie::new("form_data", serde_json::to_string(&model.form).unwrap());
+            jar.add(cookie);
+        }
+        Msg::LoadFromCookie => {
+            let mut jar = CookieJar::new();
+            if let Some(cookie) = jar.get("form_data"){
+                if let Ok(data) = serde_json::from_str::<Form>(cookie.value()) {
+                    model.form = data;
+                }
+            }
+        }
         Msg::FetchData => {
             model.organization = None;
             model.error_message = None;
@@ -187,6 +220,26 @@ fn view(model: &Model) -> Node<Msg> {
             },
             format!("{} I'm Busy Reviewing. {}", '\u{1F347}', '\u{1F980}')
         ]],
+        form![
+            input![
+                attrs! {
+                    At::Type => "text",
+                    At::Value => &model.form.organazation,
+                },
+                input_ev(Ev::Input, Msg::InputOrganazation),
+            ],
+            input![
+                attrs! {
+                    At::Type => "text",
+                    At::Value => &model.form.token,
+                },
+                input_ev(Ev::Input, Msg::InputToken),
+            ],
+            button![
+                "Submit",
+                ev(Ev::Click, |_| Msg::SubmitClicked),
+            ],
+        ],
         button![
             "Fetch data",
             ev(Ev::Click, |_| Msg::FetchData),
