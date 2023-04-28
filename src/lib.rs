@@ -2,9 +2,9 @@
 use anyhow::{Context, Result};
 use reqwest::header::{self, HeaderMap};
 use seed::{browser::web_storage::LocalStorage, prelude::*, *};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Clone)]
 struct Form {
     organization: String,
     token: String,
@@ -12,7 +12,6 @@ struct Form {
 
 #[derive(Debug)]
 struct Organization {
-    name: String,
     reviewers: Vec<Reviewer>,
     repositories: Vec<Repository>,
 }
@@ -83,10 +82,8 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.form.token = LocalStorage::get("token").unwrap_or_default();
         }
         Msg::FetchData => {
-            model.organization = None;
-            model.error_message = None;
             orders.send_msg(Msg::LoadingStarted);
-            orders.perform_cmd(fetch_organization_data().map(Msg::DataFetched));
+            orders.perform_cmd(fetch_organization_data(model.form.clone()).map(Msg::DataFetched));
         }
         Msg::DataFetched(result) => {
             orders.send_msg(Msg::LoadingFinished);
@@ -104,23 +101,19 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     }
 }
 
-async fn fetch_organization_data() -> Result<Organization> {
-    let organization_name = "your-organization";
-    let access_token = "your-access-token";
-    let mut org = Organization {
-        name: organization_name.to_string(),
-        reviewers: vec![],
-        repositories: vec![],
-    };
+async fn fetch_organization_data(form: Form) -> Result<Organization> {
+    let organization = form.organization;
+    let token = form.token;
+    let mut org = Organization {reviewers: vec![], repositories: vec![]};
     let mut headers = HeaderMap::new();
     headers.insert(
         header::AUTHORIZATION,
-        format!("Bearer {}", access_token).parse().unwrap(),
+        format!("Bearer {}", token).parse().unwrap(),
     );
-    headers.insert(header::USER_AGENT, "my-app".parse().unwrap());
+    headers.insert(header::USER_AGENT, "ibr".parse().unwrap());
     // セッションを再利用して複数回リクエストするためのインスタンスを生成する
     let client = reqwest::Client::new();
-    let repositories_url = format!("https://api.github.com/orgs/{}/repos", organization_name);
+    let repositories_url = format!("https://api.github.com/orgs/{}/repos", organization);
     let repositories_response = &client
         .get(&repositories_url)
         .headers(headers.clone())
@@ -135,7 +128,7 @@ async fn fetch_organization_data() -> Result<Organization> {
     for repository in &mut repositories {
         let pulls_url = format!(
             "https://api.github.com/repos/{}/{}/pulls?state=open",
-            organization_name, repository.name
+            organization, repository.name
         );
         let pulls_response = &client
             .get(&pulls_url)
@@ -251,14 +244,6 @@ fn view(model: &Model) -> Node<Msg> {
         match &model.organization {
             Some(organization) => {
                 div![
-                    p![
-                        style![
-                            St::FontWeight => "bold",
-                            St::FontSize => "18px",
-                            St::MarginBottom => "10px",
-                        ],
-                        format!("Organization: {}", organization.name)
-                    ],
                     table![
                         style![
                             St::BorderCollapse => "collapse",
