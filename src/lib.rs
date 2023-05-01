@@ -381,18 +381,25 @@ fn view(model: &Model) -> Node<Msg> {
                                     style![
                                         St::Border => "1px solid #2c3e50";
                                         St::Padding => "10px",
-                                        St::AlignItems => "center";
-                                        St::Gap => "10px";
+                                        St::Position => "relative",
                                     ],
-                                    img![
-                                        attrs! {
-                                            At::Src => format!("https://github.com/{}.png", reviewer.name.chars().filter(|&c| c != '\"').collect::<String>()),
-                                            At::Alt => &reviewer.name,
-                                            At::Width => "40",
-                                            At::Height => "40",
-                                        }
+                                    div![
+                                        style![
+                                            St::Display => "flex",
+                                            St::AlignItems => "center";
+                                            St::Gap => "8px";
+                                        ],
+                                        img![
+                                            style![St::BorderRadius => "25%"],
+                                            attrs! {
+                                                At::Src => format!("https://github.com/{}.png", reviewer.name.chars().filter(|&c| c != '\"').collect::<String>()),
+                                                At::Alt => &reviewer.name,
+                                                At::Width => "40",
+                                                At::Height => "40",
+                                            }
+                                        ],
+                                        a![reviewer.name.chars().filter(|&c| c != '\"').collect::<String>()]
                                     ],
-                                    a![reviewer.name.chars().filter(|&c| c != '\"').collect::<String>()]
                                 ],
                                 organization.repositories.iter().map(|repo| {
                                     let prs: Vec<PullRequest> = reviewer
