@@ -477,5 +477,5 @@ fn loading_spinner() -> Node<Msg> {
         St::Left => "50%",
         St::Transform => "translate(-50%, -50%)",
         St::Animation => "spin 1s linear infinite"
-    ],]
+    ]]
 }
