@@ -47,6 +47,7 @@ enum Msg {
     InputOrganization(String),
     InputToken(String),
     LoadLocalStorage,
+    InsertLocalStorage,
     FetchData,
     DataFetched(Result<Organization>),
     LoadingStarted,
@@ -80,7 +81,12 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.form.organization = LocalStorage::get("organization").unwrap_or_default();
             model.form.token = LocalStorage::get("token").unwrap_or_default();
         }
+        Msg::InsertLocalStorage => {
+            LocalStorage::insert("organization", &model.form.organization).unwrap_or_default();
+            LocalStorage::insert("token", &model.form.token).unwrap_or_default();
+        }
         Msg::FetchData => {
+            orders.send_msg(Msg::InsertLocalStorage);
             orders.send_msg(Msg::LoadingStarted);
             orders.perform_cmd(fetch_organization_data(model.form.clone()).map(Msg::DataFetched));
         }
