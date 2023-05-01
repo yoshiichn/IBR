@@ -149,7 +149,6 @@ async fn fetch_organization_data(form: Form) -> Result<Organization> {
             .with_context(|| "Failed to parse pull requests response")?;
         let pulls: Vec<serde_json::Value> = serde_json::from_str(&pulls_response)
             .with_context(|| "Failed to parse pull requests")?;
-
         for pull in pulls {
             if !org
                 .repositories
@@ -267,7 +266,6 @@ async fn fetch_organization_data(form: Form) -> Result<Organization> {
             }
         }
     }
-    log!(org);
     Ok(org)
 }
 
@@ -275,7 +273,7 @@ fn view(model: &Model) -> Node<Msg> {
     div![
         form![
             style! {
-                St::MaxWidth => "400px";
+                St::MaxWidth => "300px";
                 St::Display => "flex";
                 St::FlexDirection => "column";
             },
@@ -331,7 +329,7 @@ fn view(model: &Model) -> Node<Msg> {
                     style![
                         St::MarginBottom => "1.4rem";
                         St::Width => "30%";
-                        St::Padding => "0.3rem";
+                        St::Padding => "0.5rem";
                         St::BorderRadius => "0.25rem";
                         St::BorderWidth => "1px";
                         St::BackgroundColor => "#2c3e50",
@@ -385,7 +383,7 @@ fn view(model: &Model) -> Node<Msg> {
                             tr![
                                 td![
                                     style![
-                                        St::Border => "1px solid #2c3e50";
+                                        St::Border => "1px solid #b0c4de";
                                         St::Padding => "10px",
                                         St::Position => "relative",
                                     ],
@@ -416,21 +414,23 @@ fn view(model: &Model) -> Node<Msg> {
                                         .collect();
                                     td![
                                         style![
-                                            St::Border => "1px solid #2c3e50";
-                                            St::Padding => "10px",
-                                            St::VerticalAlign => "bottom",
-                                            St::TextAlign => "center",
+                                            St::Border => "1px solid #b0c4de";
                                         ],
                                         prs.iter().map(|pr| {
-                                            a![
+                                            div![
                                                 style![
                                                     St::BoxShadow => "0px 0px 5px 2px rgba(0,0,0,0.5)",
                                                     St::BackgroundColor => "white",
                                                     St::Color => "#ffffff",
-                                                    St::TextDecoration => "none",
-                                                    St::Padding => "5px 10px",
+                                                    St::Padding => "3px 20px",
                                                     St::Cursor => "pointer",
                                                     St::BorderRadius => "5px",
+                                                    St::Position => "relative",
+                                                    St::Display => "inline-block",
+                                                    St::Width => "auto",
+                                                    St::MarginRight => "15px";
+                                                    St::MarginLeft => "15px";
+                                                    St::MarginTop => "13px";
                                                 ],
                                                 a![
                                                     attrs! {
@@ -439,7 +439,25 @@ fn view(model: &Model) -> Node<Msg> {
                                                         At::Rel => "noopener noreferrer",
                                                     },
                                                     &pr.id
-                                                ]
+                                                ],
+                                                div![
+                                                    style![
+                                                        St::BoxShadow => "0px 0px 3px 1px rgba(0,0,0,0.5)",
+                                                        St::BackgroundColor => match pr.state.as_str() {
+                                                            "CHANGES_REQUESTED" => "#DC143C",
+                                                            "COMMENTED" => "#C0C0C0",
+                                                            "APPROVED" => "#3CB371",
+                                                            _ => "#E28B00",
+                                                        },
+                                                        St::Color => "white",
+                                                        St::BorderRadius => "5px",
+                                                        St::FontSize => "3px",
+                                                        St::Position => "absolute",
+                                                        St::Top => "-13px",
+                                                        St::Left => "50%",
+                                                    ],
+                                                    a![&pr.state]
+                                                ],
                                             ]
                                         })
                                     ]
