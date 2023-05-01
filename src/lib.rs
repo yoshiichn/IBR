@@ -3,6 +3,7 @@ use anyhow::{Context, Result};
 use reqwest::header::{self, HeaderMap};
 use seed::{browser::web_storage::LocalStorage, prelude::*, *};
 use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 struct Form {
@@ -32,6 +33,7 @@ struct PullRequest {
     id: String,
     url: String,
     repo_name: String,
+    state: String,
 }
 
 struct Model {
@@ -54,7 +56,10 @@ enum Msg {
 
 fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     let model = Model {
-        form: Form{organization: "".to_string(), token: "".to_string()},
+        form: Form {
+            organization: "".to_string(),
+            token: "".to_string(),
+        },
         organization: None,
         error_message: None,
         loading: false,
@@ -70,8 +75,8 @@ pub async fn start() {
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::Inputorganization(organization) => {model.form.organization = organization}
-        Msg::InputToken(token) => {model.form.token = token}
+        Msg::Inputorganization(organization) => model.form.organization = organization,
+        Msg::InputToken(token) => model.form.token = token,
         Msg::SubmitClicked => {
             LocalStorage::insert("organization", &model.form.organization).unwrap_or_default();
             LocalStorage::insert("token", &model.form.token).unwrap_or_default();
@@ -104,7 +109,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 async fn fetch_organization_data(form: Form) -> Result<Organization> {
     let organization = form.organization;
     let token = form.token;
-    let mut org = Organization {reviewers: vec![], repositories: vec![]};
+    let mut org = Organization {
+        reviewers: vec![],
+        repositories: vec![],
+    };
     let mut headers = HeaderMap::new();
     headers.insert(
         header::AUTHORIZATION,
@@ -152,10 +160,77 @@ async fn fetch_organization_data(form: Form) -> Result<Organization> {
                     name: repository.name.to_string(),
                 });
             };
+            let pr_creator = pull["user"]["login"].as_str().unwrap();
+            let id = pull["number"].to_string();
+            let reviews_url = format!(
+                "https://api.github.com/repos/{}/{}/pulls/{}/reviews",
+                organization, repository.name, id
+            );
+            let reviews_response = &client
+                .get(&reviews_url)
+                .headers(headers.clone())
+                .send()
+                .await
+                .with_context(|| format!("Failed to fetch reviews from {}", pulls_url))?
+                .text()
+                .await
+                .with_context(|| "Failed to parse reviews response")?;
+            let reviews: Vec<serde_json::Value> = serde_json::from_str(&reviews_response)
+                .with_context(|| "Failed to parse reviews")?;
+            let mut latest_state_reviewer = HashMap::new();
+            for review in reviews {
+                if let Some(map) = review.as_object() {
+                    if let Some(user) = map.get("user").and_then(|u| u.as_object()) {
+                        if let Some(username) = user.get("login").and_then(|s| s.as_str()) {
+                            if let Some(state) = map.get("state").and_then(|s| s.as_str()) {
+                                if username != pr_creator {
+                                    latest_state_reviewer
+                                        .insert(username.to_string(), state.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (user, state) in &latest_state_reviewer {
+                if !org
+                    .reviewers
+                    .iter()
+                    .any(|r| r.name.to_string() == user.to_string())
+                {
+                    org.reviewers.push(Reviewer {
+                        name: user.to_string(),
+                        assigned_pull_requests: vec![],
+                    });
+                };
+                let _index = org
+                    .reviewers
+                    .iter()
+                    .position(|r| r.name == user.to_string());
+
+                if !_index.is_none() {
+                    let index = _index.unwrap();
+
+                    org.reviewers[index]
+                        .assigned_pull_requests
+                        .push(PullRequest {
+                            id: pull["number"].to_string(),
+                            url: pull["url"]
+                                .as_str()
+                                .unwrap()
+                                .replace("api.", "")
+                                .replace("repos/", "")
+                                .replace("pulls", "pull"),
+                            repo_name: repository.name.to_string(),
+                            state: state.to_string(),
+                        });
+                }
+            }
 
             let reviewers = serde_json::Value::as_array(&pull["requested_reviewers"]).unwrap();
             for reviewer in reviewers {
-                let reviewer_name = reviewer["login"].clone();
+                let reviewer_name = reviewer["login"].as_str().unwrap();
 
                 if !org
                     .reviewers
@@ -186,12 +261,13 @@ async fn fetch_organization_data(form: Form) -> Result<Organization> {
                                 .replace("repos/", "")
                                 .replace("pulls", "pull"),
                             repo_name: repository.name.to_string(),
+                            state: "REQUESTED_REVIEW".to_string(),
                         });
                 }
             }
         }
     }
-
+    log!(org);
     Ok(org)
 }
 
@@ -220,10 +296,7 @@ fn view(model: &Model) -> Node<Msg> {
                 },
                 input_ev(Ev::Input, Msg::InputToken),
             ],
-            button![
-                "Submit",
-                ev(Ev::Click, |_| Msg::SubmitClicked),
-            ],
+            button!["Submit", ev(Ev::Click, |_| Msg::SubmitClicked),],
         ],
         button![
             "Fetch data",
