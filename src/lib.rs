@@ -323,7 +323,7 @@ fn view(model: &Model) -> Node<Msg> {
                 style! {St::TextAlign => "right"},
                 button![
                     style![
-                        St::MarginBottom => "0.7rem";
+                        St::MarginBottom => "1.4rem";
                         St::Width => "30%";
                         St::Padding => "0.3rem";
                         St::BorderRadius => "0.25rem";
@@ -350,7 +350,7 @@ fn view(model: &Model) -> Node<Msg> {
                         style![
                             St::BorderCollapse => "collapse",
                             St::Width => "100%",
-                            St::MarginBottom => "20px",
+                            //St::MarginBottom => "10px",
                         ],
                         thead![
                             style![
@@ -361,7 +361,7 @@ fn view(model: &Model) -> Node<Msg> {
                                 style![
                                     St::FontWeight => "bold",
                                     St::Padding => "10px",
-                                    St::TextAlign => "left",
+                                    St::TextAlign => "center",
                                 ],
                                 th!["Users"],
                                 organization.repositories.iter().map(|repo| {
@@ -378,6 +378,13 @@ fn view(model: &Model) -> Node<Msg> {
                         tbody![organization.reviewers.iter().map(|reviewer| {
                             tr![
                                 td![
+                                    style![
+                                        St::Border => "1px solid #2c3e50";
+                                        St::Padding => "10px",
+                                        St::Display => "flex";
+                                        St::AlignItems => "center";
+                                        St::Gap => "10px";
+                                    ],
                                     img![
                                         attrs! {
                                             At::Src => format!("https://github.com/{}.png", reviewer.name.chars().filter(|&c| c != '\"').collect::<String>()),
@@ -388,9 +395,8 @@ fn view(model: &Model) -> Node<Msg> {
                                     ],
                                     style![
                                         St::Padding => "10px",
-                                        St::VerticalAlign => "baseline",
                                     ],
-                                    a![ reviewer.name.chars().filter(|&c| c != '\"').collect::<String>()]
+                                    a![reviewer.name.chars().filter(|&c| c != '\"').collect::<String>()]
                                 ],
                                 organization.repositories.iter().map(|repo| {
                                     let prs: Vec<PullRequest> = reviewer
@@ -401,8 +407,9 @@ fn view(model: &Model) -> Node<Msg> {
                                         .collect();
                                     td![
                                         style![
+                                            St::Border => "1px solid #2c3e50";
                                             St::Padding => "10px",
-                                            St::VerticalAlign => "top",
+                                            St::VerticalAlign => "bottom",
                                             St::TextAlign => "center",
                                         ],
                                         prs.iter().map(|pr| {
@@ -413,8 +420,8 @@ fn view(model: &Model) -> Node<Msg> {
                                                     St::Color => "#ffffff",
                                                     St::TextDecoration => "none",
                                                     St::Padding => "5px 10px",
-                                                    St::BorderRadius => "5px",
                                                     St::Cursor => "pointer",
+                                                    St::BorderRadius => "5px",
                                                 ],
                                                 a![
                                                     attrs! {
