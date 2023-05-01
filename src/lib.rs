@@ -267,22 +267,6 @@ async fn fetch_organization_data(form: Form) -> Result<Organization> {
 
 fn view(model: &Model) -> Node<Msg> {
     div![
-        // form![
-        //     input![
-        //         attrs! {
-        //             At::Type => "text",
-        //             At::Value => &model.form.organization,
-        //         },
-        //         input_ev(Ev::Input, Msg::InputOrganization),
-        //     ],
-        //     input![
-        //         attrs! {
-        //             At::Type => "text",
-        //             At::Value => &model.form.token,
-        //         },
-        //         input_ev(Ev::Input, Msg::InputToken),
-        //     ],
-        // ],
         form![
             style! {
                 St::MaxWidth => "400px";
