@@ -44,7 +44,7 @@ struct Model {
 }
 
 enum Msg {
-    Inputorganization(String),
+    InputOrganization(String),
     InputToken(String),
     LoadLocalStorage,
     FetchData,
@@ -74,7 +74,7 @@ pub async fn start() {
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::Inputorganization(organization) => model.form.organization = organization,
+        Msg::InputOrganization(organization) => model.form.organization = organization,
         Msg::InputToken(token) => model.form.token = token,
         Msg::LoadLocalStorage => {
             model.form.organization = LocalStorage::get("organization").unwrap_or_default();
@@ -267,32 +267,92 @@ async fn fetch_organization_data(form: Form) -> Result<Organization> {
 
 fn view(model: &Model) -> Node<Msg> {
     div![
+        // form![
+        //     input![
+        //         attrs! {
+        //             At::Type => "text",
+        //             At::Value => &model.form.organization,
+        //         },
+        //         input_ev(Ev::Input, Msg::InputOrganization),
+        //     ],
+        //     input![
+        //         attrs! {
+        //             At::Type => "text",
+        //             At::Value => &model.form.token,
+        //         },
+        //         input_ev(Ev::Input, Msg::InputToken),
+        //     ],
+        // ],
         form![
-            input![
-                attrs! {
-                    At::Type => "text",
-                    At::Value => &model.form.organization,
+            style! {
+                St::MaxWidth => "400px";
+                St::Display => "flex";
+                St::FlexDirection => "column";
+            },
+            div![
+                style! {
+                    St::MarginBottom => "0.7rem";
                 },
-                input_ev(Ev::Input, Msg::Inputorganization),
+                label![attrs! { At::For => "organization" }, "Organization"],
+                input![
+                    style! {
+                        St::Width => "100%";
+                        St::Padding => "0.3rem";
+                        St::BorderRadius => "0.25rem";
+                        St::BorderColor => "#ced4da";
+                        St::BackgroundColor => "#ffffff";
+                        St::BorderWidth => "1px";
+                    },
+                    attrs! {
+                        At::Type => "text",
+                        At::Value => &model.form.organization,
+                        At::Id => "organization",
+                        At::Placeholder => "Enter Organization",
+                    },
+                    input_ev(Ev::Input, Msg::InputOrganization),
+                ],
             ],
-            input![
-                attrs! {
-                    At::Type => "text",
-                    At::Value => &model.form.token,
+            div![
+                style! {
+                    St::MarginBottom => "0.7rem";
                 },
-                input_ev(Ev::Input, Msg::InputToken),
+                label![attrs! { At::For => "token" }, "Token"],
+                input![
+                    style! {
+                        St::Width => "100%";
+                        St::Padding => "0.3rem";
+                        St::BorderRadius => "0.25rem";
+                        St::BorderColor => "#ced4da";
+                        St::BackgroundColor => "#ffffff";
+                        St::BorderWidth => "1px";
+                    },
+                    attrs! {
+                        At::Type => "password",
+                        At::Value => &model.form.token,
+                        At::Id => "token",
+                        At::Placeholder => "Enter token",
+                    },
+                    input_ev(Ev::Input, Msg::InputToken),
+                ],
             ],
-        ],
-        button![
-            "Fetch data",
-            ev(Ev::Click, |_| Msg::FetchData),
-            style![
-                St::BackgroundColor => "#2c3e50",
-                St::Color => "#ffffff",
-                St::Padding => "10px 20px",
-                St::BorderRadius => "5px",
-                St::Cursor => "pointer",
-            ],
+            div![
+                style! {St::TextAlign => "right"},
+                button![
+                    style![
+                        St::MarginBottom => "0.7rem";
+                        St::Width => "30%";
+                        St::Padding => "0.3rem";
+                        St::BorderRadius => "0.25rem";
+                        St::BorderWidth => "1px";
+                        St::BackgroundColor => "#2c3e50",
+                        St::Color => "#ffffff",
+                        St::Cursor => "pointer",
+                    ],
+                    attrs! {At::Type => "button"},
+                    "Fetch Data",
+                    mouse_ev(Ev::Click, |_| Msg::FetchData)
+                ],
+            ]
         ],
         div![if model.loading {
             loading_spinner()
