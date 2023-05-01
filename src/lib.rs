@@ -350,7 +350,6 @@ fn view(model: &Model) -> Node<Msg> {
                         style![
                             St::BorderCollapse => "collapse",
                             St::Width => "100%",
-                            //St::MarginBottom => "10px",
                         ],
                         thead![
                             style![
@@ -367,6 +366,7 @@ fn view(model: &Model) -> Node<Msg> {
                                 organization.repositories.iter().map(|repo| {
                                     th![
                                         style![
+                                            St::FontWeight => "bold",
                                             St::Padding => "10px",
                                             St::TextAlign => "center",
                                         ],
@@ -381,7 +381,6 @@ fn view(model: &Model) -> Node<Msg> {
                                     style![
                                         St::Border => "1px solid #2c3e50";
                                         St::Padding => "10px",
-                                        St::Display => "flex";
                                         St::AlignItems => "center";
                                         St::Gap => "10px";
                                     ],
@@ -392,9 +391,6 @@ fn view(model: &Model) -> Node<Msg> {
                                             At::Width => "40",
                                             At::Height => "40",
                                         }
-                                    ],
-                                    style![
-                                        St::Padding => "10px",
                                     ],
                                     a![reviewer.name.chars().filter(|&c| c != '\"').collect::<String>()]
                                 ],
