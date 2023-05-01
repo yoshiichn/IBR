@@ -46,7 +46,6 @@ struct Model {
 enum Msg {
     Inputorganization(String),
     InputToken(String),
-    SubmitClicked,
     LoadLocalStorage,
     FetchData,
     DataFetched(Result<Organization>),
@@ -77,11 +76,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::Inputorganization(organization) => model.form.organization = organization,
         Msg::InputToken(token) => model.form.token = token,
-        Msg::SubmitClicked => {
-            LocalStorage::insert("organization", &model.form.organization).unwrap_or_default();
-            LocalStorage::insert("token", &model.form.token).unwrap_or_default();
-            orders.send_msg(Msg::FetchData);
-        }
         Msg::LoadLocalStorage => {
             model.form.organization = LocalStorage::get("organization").unwrap_or_default();
             model.form.token = LocalStorage::get("token").unwrap_or_default();
@@ -273,14 +267,6 @@ async fn fetch_organization_data(form: Form) -> Result<Organization> {
 
 fn view(model: &Model) -> Node<Msg> {
     div![
-        h1![a![
-            attrs! {
-                At::Href => "https://github.com/yoshiichn/IBR",
-                At::Target => "_blank",
-                At::Rel => "noopener noreferrer",
-            },
-            format!("{} I'm Busy Reviewing. {}", '\u{1F347}', '\u{1F980}')
-        ]],
         form![
             input![
                 attrs! {
@@ -296,7 +282,6 @@ fn view(model: &Model) -> Node<Msg> {
                 },
                 input_ev(Ev::Input, Msg::InputToken),
             ],
-            button!["Submit", ev(Ev::Click, |_| Msg::SubmitClicked),],
         ],
         button![
             "Fetch data",
