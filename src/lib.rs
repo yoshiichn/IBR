@@ -453,7 +453,7 @@ fn view(model: &Model) -> Node<Msg> {
                                                         St::BorderRadius => "5px",
                                                         St::FontSize => "3px",
                                                         St::Position => "absolute",
-                                                        St::Top => "-13px",
+                                                        St::Top => "-8px",
                                                         St::Left => "50%",
                                                     ],
                                                     a![&pr.state]
